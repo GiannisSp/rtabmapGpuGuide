@@ -1,0 +1,237 @@
+#note for python boost-modding https://techoverflow.net/2024/10/20/how-to-build-boost-python-with-local-python-version-without-sudo/
+# Prebuilt base image with jetpack 6.0, pytorch 2.4 and ROS2 humble, please ensure that it has already been built.
+# FROM base-image-rover
+FROM nvidia/cuda:12.2.0-base-ubuntu20.04
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG depfolder=/home/
+
+WORKDIR ${depfolder}
+
+RUN apt update -y
+RUN apt install -y build-essential wget  curl python3 python3-dev libxml2 nano git \ 
+                python3 python3-pip python3-dev python3-setuptools gfortran; 
+                
+# #cuSPARSELt
+RUN apt install -y libcusparselt0 libcusparselt-dev
+
+# Install CUDA
+RUN wget -q https://developer.download.nvidia.com/compute/cuda/12.8.1/local_installers/cuda_12.8.1_570.124.06_linux.run
+RUN sh cuda_12.8.1_570.124.06_linux.run --toolkit --silent
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+ENV PATH=/usr/local/cuda/bin${PATH:+:${PATH}}
+RUN ldconfig 
+
+# Install CuDNN
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb -q
+RUN echo "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /" > /etc/apt/sources.list.d/cuda.list
+RUN dpkg -i cuda-keyring_1.1-1_all.deb
+RUN apt-get update -q; apt-get -y install cudnn-cuda-12
+
+# #configure NVBlas ################################################# should adjusted to point to right directory, should also read instructions
+# https://docs.nvidia.com/cuda/nvblas/#nvblas-config-file-environment-variable
+# RUN echo -n '# Set CUDA device (if using multiple GPUs)' \
+#             '\ncuda_device 0  # Use GPU 0, change if you have multiple GPUs' \
+#             "\nuse_cuda 1  # Enable CUDA acceleration" \
+#             "\n# Optional: Set the path to a CPU BLAS library (e.g., OpenBLAS, ATLAS, etc.)" \
+#             "\ncpu_blas_library /path/to/libopenblas.so" >> nvblas.conf
+
+# #activate NVBlas
+# ENV NVBLAS_CONFIG_FILE=/root/nvblas.conf
+# #direct FWWT to cuWWT if compatible
+ENV LD_PRELOAD=/usr/local/cuda/lib64/libcufft.so
+
+# #################
+# ##### Install CMake  22
+# #################
+RUN apt install -y libxrandr-dev libxinerama-dev libxi-dev libssl-dev; apt remove --purge cmake; hash -r;
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.22.6/cmake-3.22.6.tar.gz
+RUN tar -xvf cmake-3.22.6.tar.gz; cd cmake-3.22.6; ./bootstrap && make -j$(nproc) && make install
+
+# #LAPACK install
+#  RUN git clone https://github.com/Reference-LAPACK/lapack.git; \
+#      cd lapack; \
+#      mkdir build; \
+#      cd build; \
+#      cmake .. -DUSE_OPTIMIZED_LAPACK=ON; \
+#      cmake --build . -j$(nproc) --target install
+
+# Eigen install | missing packages CHOLMOD, UMFPACK, SUPERLU
+RUN apt install -y software-properties-common; apt-get update -y; \
+    apt install -y libblas-dev liblz4-dev pkg-config liblz4-dev; \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test
+
+RUN wget -qO- https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz | tar xz; \
+    cd eigen-3.3.7; mkdir build; cd build; \
+    cmake .. -D  EIGEN_TEST_CUDA=ON; make -j$(nproc) ; make install; cd ../..
+	
+# FLANN install | hdf5 not found
+RUN git clone https://github.com/flann-lib/flann.git; cd flann; git pull origin  master; \
+    mkdir build; cd build; \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_LIB=ON; make -j$(nproc); make install; cd ../..
+
+#stuff
+RUN apt install libmpfr-dev libgmp-dev -y
+#it used to be 11 but rtabmap works best with 8
+RUN apt update; apt install -y  gcc-8 g++-8
+RUN apt -y update; update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 100; apt -y update
+RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 100
+
+# # SuiteSparse install
+# RUN apt-get install gfortran-7
+# RUN git clone https://github.com/DrTimothyAldenDavis/SuiteSparse.git; cd SuiteSparse; git checkout stable; git pull origin  stable; \
+#     mkdir build; cd build; 
+# RUN apt install -y libopenblas-dev 
+# RUN cmake .. -DCMAKE_BUILD_TYPE=Release; make -j4; make install; cd ../..
+RUN apt-get install -y libsuitesparse-dev
+
+#install Boost
+RUN apt-get install build-essential \
+    python3-dev \
+    python3-pip \
+    libicu-dev \
+    libbz2-dev \
+    libssl-dev \
+    libboost-all-dev \
+    wget -y
+
+#Install VTK 7.1
+RUN apt install -y libvtk7-dev
+
+#Install pcl 1.10
+RUN apt install -y libpcl-dev libcjson-dev libpcap-dev freeglut3 freeglut3-dev libpcap-dev qt5-qmake qtbase5-dev qtchooser libusb-1.0-0-dev libopenni2-dev libqhull*
+
+# #Install OpenCV
+RUN apt install -y python3  python3-dev python3-numpy libavcodec-dev libavformat-dev libswscale-dev libgl1-mesa-glx libgl1-mesa-dev
+RUN apt install -y libgstreamer-plugins-base1.0-dev libgstreamer1.0-dev libgtk-3-dev libpng-dev libjpeg-dev libopenexr-dev libtiff-dev libwebp-dev
+RUN git clone https://github.com/opencv/opencv.git; \
+    git clone https://github.com/opencv/opencv_contrib.git
+RUN cd opencv; mkdir build; cd build; cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D WITH_CUDA=ON -D WITH_OPENGL=ON -D WITH_OPENCL=ON -D WITH_CUDNN=ON -D WITH_CUBLAS=ON -DCUDA_SDK_ROOT_DIR=/usr/local/cuda -D OPENCV_DNN_CUDA=ON -D CUDA_ARCH_BIN=5.2 -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules -D HAVE_opencv_python3=ON -DCMAKE_CUDA_ARCHITECTURES="52" -DCUDA_FAST_MATH=ON -DOPENCV_ENABLE_NONFREE=ON ..; cmake .. -DOPENCV_PYTHON3_VERSION=ON 
+RUN cd opencv/build; make -j$(nproc); make install; ldconfig
+# # # #use appropriate python version  
+# # RUN ln -s /usr/local/lib/python3.8/site-packages/cv2 /usr/local/lib/python3.8/dist-packages/cv2 
+
+# # # CudaSift install
+RUN git clone https://github.com/matlabbe/CudaSift.git 
+RUN cd CudaSift; mkdir build; cd build; \
+# Add -DVERBOSE=OFF to cmake to avoid internal logs when including in your app
+    cmake .. -DCUDA_SDK_ROOT_DIR=/usr/local/cuda; \
+    make; \ 
+    make install
+
+# RTABMap install
+RUN git clone https://github.com/introlab/rtabmap.git
+RUN git checkout noetic-devel; git pull origin noetic-devel; \
+    cd rtabmap/build; cmake .. -D WITH_CUDASIFT=ON -D WITH_QT=ON -DCUDA_SDK_ROOT_DIR=/usr/local/cuda -DCUDA_CUDA_LIBRARY=/usr/lib/x86_64-linux-gnu/libcuda.so; \
+    make -j$(nproc); make install
+
+# # ROS1 Noetic Install
+RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+RUN apt install -y python3-pip python3-setuptools python3-wheel
+RUN apt update -y
+RUN apt upgrade -y
+
+# # RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
+RUN apt update -y
+RUN apt install ros-noetic-ros-base -y
+
+# # RTABMap-ROS Install
+RUN git clone https://github.com/AprilRobotics/apriltag.git /home/apriltag; cd /home/apriltag; mkdir build; cd build; cmake ..; make -j$(nproc); make install
+RUN git clone https://github.com/orocos/orocos_kinematics_dynamics; cd orocos_kinematics_dynamics; \
+    cd orocos_kdl; mkdir build; cd build; cmake ..; make -j$(nproc); make install
+RUN apt install -y ros-noetic-python-qt-binding liburdfdom-headers-dev liburdf-dev
+# # RUN apt install libxaw7-dev [should retry the whole build to check if ogre is actually needed] | irrelevant -> possible to delete
+RUN apt install -y ros-noetic-angles libtbb* libsdl* libyaml* libbullet-dev libassimp-dev libogre-1.9-dev
+ENV export source /opt/ros/noetic/setup.bash
+RUN mkdir catkin_ws; cd catkin_ws; mkdir src
+WORKDIR ${depfolder}/catkin_ws/src
+# # RUN \ 
+# # git clone https://github.com/introlab/rtabmap_ros.git; cd rtabmap_ros; git checkout noetic-devel; git pull origin noetic-devel; cd ..;\
+# # git clone https://github.com/ros-perception/vision_opencv.git; cd vision_opencv; git checkout noetic; git pull origin noetic; cd ..; \
+# # git clone https://github.com/ros-perception/perception_pcl.git; cd perception_pcl; git checkout melodic-devel; git pull origin melodic-devel; cd ..; \
+# git clone https://github.com/ros/rosconsole.git; \
+# git clone https://github.com/ros/common_msgs.git; \
+# git clone https://github.com/ros/std_msgs.git; \
+# git clone https://github.com/ros/roscpp_core.git; \
+# git clone https://github.com/ros/ros.git; \
+# git clone https://github.com/ros/rospack.git; \
+# git clone https://github.com/ros/ros_comm.git; \
+# git clone https://github.com/ros/message_runtime.git; \
+# git clone https://github.com/ros/ros_comm_msgs.git; \
+# git clone https://github.com/ros/pluginlib.git; cd pluginlib; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+# git clone https://github.com/ros/class_loader.git; cd class_loader; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+# git clone https://github.com/ros-perception/pcl_msgs.git; \
+# git clone https://github.com/ros/dynamic_reconfigure.git; \
+# git clone https://github.com/ros/nodelet_core.git; \
+# git clone https://github.com/ros/bond_core.git; cd bond_core; git checkout kinetic-devel; git pull origin kinetic-devel; cd ..; \
+# git clone https://github.com/ros/geometry.git; \
+# git clone https://github.com/ros-planning/navigation.git; \
+# git clone https://github.com/ros/geometry2.git; \
+# git clone https://github.com/ros/actionlib.git; \
+# git clone https://github.com/ros/diagnostics.git; cd diagnostics; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+# git clone https://github.com/ros-perception/laser_geometry.git; cd laser_geometry; git checkout kinetic-devel; git pull origin kinetic-devel; cd ..; \
+# git clone https://github.com/ros-visualization/rviz.git; cd rviz; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+# git clone https://github.com/ros-perception/image_common.git; cd image_common; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+# git clone https://github.com/ros-visualization/interactive_markers.git; cd interactive_markers; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+# git clone https://github.com/ros-planning/navigation_msgs.git; cd navigation_msgs; git checkout ros1; git pull origin ros1; cd ..; \
+# git clone https://github.com/ros/resource_retriever.git; cd resource_retriever; git checkout indigo-devel; git pull origin indigo-devel; cd ..; \
+# git clone https://github.com/ros/urdf.git; \
+# git clone https://github.com/ros/rosconsole_bridge.git; \
+# git clone https://github.com/OctoMap/octomap_msgs.git; \
+# git clone https://github.com/ANYbotics/grid_map.git; cd grid_map; git checkout melodic-devel; git pull origin melodic-devel; cd ..; \
+# git clone https://github.com/ros/filters.git; cd filters; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+# git clone https://github.com/UbiquityRobotics/fiducials.git; cd fiducials; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+# git clone https://github.com/ros-perception/vision_msgs.git; cd vision_msgs; git checkout melodic-devel; git pull origin melodic-devel; cd ..; \
+# git clone https://github.com/AprilRobotics/apriltag_ros.git; \
+# git clone https://github.com/ros-perception/image_pipeline.git; cd image_pipeline; git checkout noetic; git pull origin noetic; cd ..; \
+# git clone https://github.com/OctoMap/octomap.git; \
+# git clone https://github.com/ros-perception/image_transport_plugins.git; cd image_transport_plugins; git checkout noetic-devel; git pull origin noetic-devel; cd ..
+
+
+# RUN apt install -y libturbojpeg-dev
+
+# # add std_srvs and delete aruco_detect which (probably) has compatibily issue with some libraries | may also need in packages.xml in some
+# RUN sed -i ':a;N;$!ba;s/\(find_package(catkin REQUIRED COMPONENTS[^\)]*\))/\1  std_srvs)/' ./apriltag_ros/apriltag_ros/CMakeLists.txt; \
+#     sed -i ':a;N;$!ba;s/\(find_package(catkin REQUIRED COMPONENTS[^\)]*\))/\1  std_srvs)/' ./fiducials/fiducial_slam/CMakeLists.txt; \
+#     sed -i ':a;N;$!ba;s/\(find_package(catkin REQUIRED COMPONENTS[^\)]*\))/\1  std_srvs)/' ./fiducials/stag_detect/CMakeLists.txt; \ 
+#     sed -i ':a;N;$!ba;s/\(find_package(catkin REQUIRED COMPONENTS[^\)]*\))/\1  vision_msgs)/' ./fiducials/stag_detect/CMakeLists.txt; \
+#     rm -rf ./fiducials/aruco_detect
+
+# WORKDIR /home/catkin_ws
+# RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && catkin_make_isolated -j$(nproc)"
+
+# COPY rosbag.bag /home/rosbag.bag
+# #something to do because there is no display so it can run in the docker
+# ENV export QT_QPA_PLATFORM=offscreen 
+
+# ### Run in container ( for the time being )
+# # source /opt/ros/noetic/setup.bash; source /home/catkin_ws/devel_isolated/setup.bash 
+# replace demo_stereo_outdoor.launch with your own launch file
+# # roslaunch rtabmap_demos demo_stereo_outdoor.launch
+# # rosbag play --clock /home/rosbag.bag
+# # possibly useful run in host system sudo nvidia-smi -pm 1
+
+
+# # FUTURE -> find gpu flags for rtabmap and try to set them to TRUE
+
+
+
+# git clone https://github.com/introlab/rtabmap_ros.git; cd rtabmap_ros; git checkout noetic-devel; git pull origin noetic-devel; cd ..
+# git clone https://github.com/ros-perception/vision_opencv.git; cd vision_opencv; git checkout noetic; git pull origin noetic; cd ..
+# git clone https://github.com/ros-perception/image_pipeline.git; cd image_pipeline; git checkout noetic; git pull origin noetic; cd ..
+# git clone https://github.com/ros-perception/image_common.git; cd image_common; git checkout noetic-devel; git pull origin noetic-devel; cd ..
+# git clone https://github.com/ANYbotics/grid_map.git; cd grid_map; git checkout melodic-devel; git pull origin melodic-devel; cd ..;
+# git clone https://github.com/ros-perception/image_transport_plugins.git; cd image_transport_plugins; git checkout noetic-devel; git pull origin noetic-devel; cd ..
+# apt-get install python3-rosdep
+# rosdep init
+# rosdep update
+# rosdep install --from-paths src --ignore-src -r -y
+# apt remove libopencv-dev
+# apt install libturbojpeg libturbojpeg0-dev
+
+
+
+# bla bla .. source .. catkin_make_isolated or catkin_make
+# > /dev/null 2>&1 # suppress output
