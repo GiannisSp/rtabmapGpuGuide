@@ -1,0 +1,1 @@
+source /opt/ros/noetic/setup.bash; source /home/catkin_ws/devel_isolated/setup.bash 

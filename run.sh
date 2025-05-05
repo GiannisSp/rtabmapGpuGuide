@@ -5,6 +5,7 @@ function usage {
   echo "Usage: $0 [OPTIONS]"
   echo "Options:"
   echo "  --name=CONTAINER_NAME      Name of the Docker container."
+  echo "  --image=IMAGE_NAME         Name of the Docker image (default: rover-image)."
   echo "  --mode=MODE                "
   echo "      test:                  Temporary, removed on stop."
   echo "      devel:                 Persistent, for development."
@@ -12,7 +13,7 @@ function usage {
   echo "      stop_autostart:        Stops and disables autostart."
   echo
   echo "Example:"
-  echo "  $0 --name=rover_container --mode=test"
+  echo "  $0 --name=rover_container --image=rover-image --mode=test"
   echo
 }
 
@@ -26,7 +27,7 @@ fi
 # Initial variables with default values
 container_name=""
 container_autostart_name="rover_autostart"
-image_name="rover-image"
+image_name="rover-image"  # This will now be the default value
 mode="test"
 docker_options=""
 
@@ -40,6 +41,10 @@ while [[ "$#" -gt 0 ]]; do
     --name=*)
       container_name="${1#*=}"
       echo "--name=$container_name"
+      ;;
+    --image=*)
+      image_name="${1#*=}"
+      echo "--image=$image_name"
       ;;
     --mode=*)
       mode="${1#*=}"
@@ -107,15 +112,19 @@ else
   # Run the Docker container with the specified options
   docker run $docker_options --name "${container_name}" \
                -it \
-              --privileged \
-	      --runtime=nvidia \
-        --gpus all \
-              -v /lib/modules/5.15.136-tegra:/lib/modules/5.15.136-tegra \
-              --network=host \
+               --privileged \
+               --runtime=nvidia \
+               --gpus all \
+               -e NVIDIA_VISIBLE_DEVICES=all \
+               -e NVIDIA_DRIVER_CAPABILITIES=all \
+               --network=host \
+               --env="DISPLAY=$DISPLAY" \
+               --env="QT_X11_NO_MITSHM=1" \
+               --env="XDG_RUNTIME_DIR=/tmp/runtime-root" \
+               --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+               --volume="$HOME/.Xauthority:/root/.Xauthority:rw" \
+               -v /lib/modules/5.15.136-tegra:/lib/modules/5.15.136-tegra \
                "${image_name}" \
-               ${start_command} 
-
-
-               
+               ${start_command}
 fi
 

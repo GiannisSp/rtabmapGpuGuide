@@ -147,91 +147,33 @@ RUN apt install -y ros-noetic-angles libtbb* libsdl* libyaml* libbullet-dev liba
 ENV export source /opt/ros/noetic/setup.bash
 RUN mkdir catkin_ws; cd catkin_ws; mkdir src
 WORKDIR ${depfolder}/catkin_ws/src
-# # RUN \ 
-# # git clone https://github.com/introlab/rtabmap_ros.git; cd rtabmap_ros; git checkout noetic-devel; git pull origin noetic-devel; cd ..;\
-# # git clone https://github.com/ros-perception/vision_opencv.git; cd vision_opencv; git checkout noetic; git pull origin noetic; cd ..; \
-# # git clone https://github.com/ros-perception/perception_pcl.git; cd perception_pcl; git checkout melodic-devel; git pull origin melodic-devel; cd ..; \
-# git clone https://github.com/ros/rosconsole.git; \
-# git clone https://github.com/ros/common_msgs.git; \
-# git clone https://github.com/ros/std_msgs.git; \
-# git clone https://github.com/ros/roscpp_core.git; \
-# git clone https://github.com/ros/ros.git; \
-# git clone https://github.com/ros/rospack.git; \
-# git clone https://github.com/ros/ros_comm.git; \
-# git clone https://github.com/ros/message_runtime.git; \
-# git clone https://github.com/ros/ros_comm_msgs.git; \
-# git clone https://github.com/ros/pluginlib.git; cd pluginlib; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
-# git clone https://github.com/ros/class_loader.git; cd class_loader; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
-# git clone https://github.com/ros-perception/pcl_msgs.git; \
-# git clone https://github.com/ros/dynamic_reconfigure.git; \
-# git clone https://github.com/ros/nodelet_core.git; \
-# git clone https://github.com/ros/bond_core.git; cd bond_core; git checkout kinetic-devel; git pull origin kinetic-devel; cd ..; \
-# git clone https://github.com/ros/geometry.git; \
-# git clone https://github.com/ros-planning/navigation.git; \
-# git clone https://github.com/ros/geometry2.git; \
-# git clone https://github.com/ros/actionlib.git; \
-# git clone https://github.com/ros/diagnostics.git; cd diagnostics; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
-# git clone https://github.com/ros-perception/laser_geometry.git; cd laser_geometry; git checkout kinetic-devel; git pull origin kinetic-devel; cd ..; \
-# git clone https://github.com/ros-visualization/rviz.git; cd rviz; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
-# git clone https://github.com/ros-perception/image_common.git; cd image_common; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
-# git clone https://github.com/ros-visualization/interactive_markers.git; cd interactive_markers; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
-# git clone https://github.com/ros-planning/navigation_msgs.git; cd navigation_msgs; git checkout ros1; git pull origin ros1; cd ..; \
-# git clone https://github.com/ros/resource_retriever.git; cd resource_retriever; git checkout indigo-devel; git pull origin indigo-devel; cd ..; \
-# git clone https://github.com/ros/urdf.git; \
-# git clone https://github.com/ros/rosconsole_bridge.git; \
-# git clone https://github.com/OctoMap/octomap_msgs.git; \
-# git clone https://github.com/ANYbotics/grid_map.git; cd grid_map; git checkout melodic-devel; git pull origin melodic-devel; cd ..; \
-# git clone https://github.com/ros/filters.git; cd filters; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
-# git clone https://github.com/UbiquityRobotics/fiducials.git; cd fiducials; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
-# git clone https://github.com/ros-perception/vision_msgs.git; cd vision_msgs; git checkout melodic-devel; git pull origin melodic-devel; cd ..; \
-# git clone https://github.com/AprilRobotics/apriltag_ros.git; \
-# git clone https://github.com/ros-perception/image_pipeline.git; cd image_pipeline; git checkout noetic; git pull origin noetic; cd ..; \
-# git clone https://github.com/OctoMap/octomap.git; \
-# git clone https://github.com/ros-perception/image_transport_plugins.git; cd image_transport_plugins; git checkout noetic-devel; git pull origin noetic-devel; cd ..
+RUN \ 
+git clone https://github.com/introlab/rtabmap_ros.git; cd rtabmap_ros; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+git clone https://github.com/ros-perception/vision_opencv.git; cd vision_opencv; git checkout noetic; git pull origin noetic; cd ..; \
+git clone https://github.com/ros-perception/image_pipeline.git; cd image_pipeline; git checkout noetic; git pull origin noetic; cd ..; \
+git clone https://github.com/ros-perception/image_common.git; cd image_common; git checkout noetic-devel; git pull origin noetic-devel; cd ..; \
+git clone https://github.com/ANYbotics/grid_map.git; cd grid_map; git checkout melodic-devel; git pull origin melodic-devel; cd ..; \
+git clone https://github.com/ros-perception/image_transport_plugins.git; cd image_transport_plugins; git checkout noetic-devel; git pull origin noetic-devel; cd ..
 
+RUN apt install -y python3-rosdep; cd ..; rosdep init; rosdep update; rosdep install --from-paths src --ignore-src -r -y
+RUN apt remove libopencv-dev
+RUN apt install -y libturbojpeg-dev 
+#libturbojpeg0-dev
 
-# RUN apt install -y libturbojpeg-dev
+WORKDIR /home/catkin_ws
+RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && catkin_make"
 
-# # add std_srvs and delete aruco_detect which (probably) has compatibily issue with some libraries | may also need in packages.xml in some
-# RUN sed -i ':a;N;$!ba;s/\(find_package(catkin REQUIRED COMPONENTS[^\)]*\))/\1  std_srvs)/' ./apriltag_ros/apriltag_ros/CMakeLists.txt; \
-#     sed -i ':a;N;$!ba;s/\(find_package(catkin REQUIRED COMPONENTS[^\)]*\))/\1  std_srvs)/' ./fiducials/fiducial_slam/CMakeLists.txt; \
-#     sed -i ':a;N;$!ba;s/\(find_package(catkin REQUIRED COMPONENTS[^\)]*\))/\1  std_srvs)/' ./fiducials/stag_detect/CMakeLists.txt; \ 
-#     sed -i ':a;N;$!ba;s/\(find_package(catkin REQUIRED COMPONENTS[^\)]*\))/\1  vision_msgs)/' ./fiducials/stag_detect/CMakeLists.txt; \
-#     rm -rf ./fiducials/aruco_detect
-
-# WORKDIR /home/catkin_ws
-# RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && catkin_make_isolated -j$(nproc)"
-
-# COPY rosbag.bag /home/rosbag.bag
-# #something to do because there is no display so it can run in the docker
-# ENV export QT_QPA_PLATFORM=offscreen 
-
-# ### Run in container ( for the time being )
-# # source /opt/ros/noetic/setup.bash; source /home/catkin_ws/devel_isolated/setup.bash 
+COPY rosbag.bag /home/catkin_ws/rosbag.bag
 # replace demo_stereo_outdoor.launch with your own launch file
+COPY demo_stereo_outdoor.launch /home/catkin_ws/src/rtabmap_ros/launch/demo_stereo_outdoor.launch
+#something to do because there is no display so it can run in the docker
+ENV export QT_QPA_PLATFORM=offscreen 
+
+COPY entrypoint.sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
+
 # # roslaunch rtabmap_demos demo_stereo_outdoor.launch
 # # rosbag play --clock /home/rosbag.bag
 # # possibly useful run in host system sudo nvidia-smi -pm 1
-
-
-# # FUTURE -> find gpu flags for rtabmap and try to set them to TRUE
-
-
-
-# git clone https://github.com/introlab/rtabmap_ros.git; cd rtabmap_ros; git checkout noetic-devel; git pull origin noetic-devel; cd ..
-# git clone https://github.com/ros-perception/vision_opencv.git; cd vision_opencv; git checkout noetic; git pull origin noetic; cd ..
-# git clone https://github.com/ros-perception/image_pipeline.git; cd image_pipeline; git checkout noetic; git pull origin noetic; cd ..
-# git clone https://github.com/ros-perception/image_common.git; cd image_common; git checkout noetic-devel; git pull origin noetic-devel; cd ..
-# git clone https://github.com/ANYbotics/grid_map.git; cd grid_map; git checkout melodic-devel; git pull origin melodic-devel; cd ..;
-# git clone https://github.com/ros-perception/image_transport_plugins.git; cd image_transport_plugins; git checkout noetic-devel; git pull origin noetic-devel; cd ..
-# apt-get install python3-rosdep
-# rosdep init
-# rosdep update
-# rosdep install --from-paths src --ignore-src -r -y
-# apt remove libopencv-dev
-# apt install libturbojpeg libturbojpeg0-dev
-
-
-
-# bla bla .. source .. catkin_make_isolated or catkin_make
-# > /dev/null 2>&1 # suppress output
+    # > /dev/null 2>&1 # suppress output
