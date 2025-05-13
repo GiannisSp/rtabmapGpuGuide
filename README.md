@@ -19,6 +19,8 @@ Run the appropriate `script` file to build. Remind to change the appropriate ima
 **C. Launch file & Test**
 In theory I included all the known flags to me in the .launch file. I tested the build using publicly availiable `rosbags`. It is obvious that `odometry` & `slam` nodes are running on GPU but the GPU activity only went up by 3-5%. Remember to supress the output of the terminals because that also register as gpu utilization and stop any other gpu related task e.g videos, to observe the actual utilization of the gpu. 
 
+The commented lines are either extra information, packages that I thought they were needed and/or I didn't manage to setup them properly or how I thought I had to
+
 Hardware tested : 
 Linux Mint <version>
 i7-6700HQ
