@@ -123,7 +123,8 @@ else
                --env="XDG_RUNTIME_DIR=/tmp/runtime-root" \
                --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
                --volume="$HOME/.Xauthority:/root/.Xauthority:rw" \
-               -v /lib/modules/5.15.136-tegra:/lib/modules/5.15.136-tegra \
+               # Optional: Jetson-specific kernel modules mount
+              #  -v /lib/modules/5.15.136-tegra:/lib/modules/5.15.136-tegra \
                "${image_name}" \
                ${start_command}
 fi

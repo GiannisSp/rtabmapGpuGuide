@@ -156,7 +156,7 @@ git clone https://github.com/ANYbotics/grid_map.git; cd grid_map; git checkout m
 git clone https://github.com/ros-perception/image_transport_plugins.git; cd image_transport_plugins; git checkout noetic-devel; git pull origin noetic-devel; cd ..
 
 RUN apt install -y python3-rosdep; cd ..; rosdep init; rosdep update; rosdep install --from-paths src --ignore-src -r -y
-RUN apt remove libopencv-dev
+RUN apt remove -y libopencv-dev
 RUN apt install -y libturbojpeg-dev 
 #libturbojpeg0-dev
 
