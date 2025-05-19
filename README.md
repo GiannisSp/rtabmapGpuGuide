@@ -1,29 +1,59 @@
-# rtabmapGpuGuide
-Here is my successfull attempts and the knowledge I gathered in trying to build rtabmap with gpu suppport. It took me a lot of debugging and I couldn't have done it without the support I got from the dev-team, which you can find here : https://github.com/introlab/rtabmap_ros/issues/1238#issuecomment-2851189592
-Below there are two build attemps. "Set 2" probably is more complete than the first set. Sets only differ in the last step of building rtabmap-ros in ros-noetic catkwin_ws.
+# RTAB-Map GPU Support Guide
 
-**Disclaimer** - If any errors appear while running the .launch file , there are may be some packages missing that can be resolved by `apt install` them. 
+This guide documents my successful attempts and knowledge gained while building RTAB-Map with GPU support. The process involved significant debugging, and I benefited greatly from the help of the RTAB-Map development team. For reference, see their support here:  
+[RTAB-Map ROS Issue #1238, Comment](https://github.com/introlab/rtabmap_ros/issues/1238#issuecomment-2851189592)
 
+## Table of Contents
+1. [Disclaimer](#disclaimer)
+2. [Build Sets Context](#build-sets-context)
+3. [Build & Run](#build--run)
+4. [Launch File & Testing](#launch-file--testing)
+5. [Hardware Tested](#hardware-tested)
 
-**A. Build sets context** 
+---
 
-**Build Set 1:** rtabmap-auto
-This is a semi-automatic process of rtabmap-ros. Feels more complete and compiles without errors 
+## Disclaimer
 
-**Build Set 2 (auxillery):** rtabmap 
-First successfull build I did, that ended up not being needed, after it worked and I tried to follow different route. This is full manual installation of most of the packages needed for rtabmap-ros. Some packages may be missing e.g. aruco-detect that I coudn't include because of incopatibilities with other libraries
+If you encounter errors while running the `.launch` file, some packages may be missing. Most missing dependencies can be resolved by installing them via `apt install`.
 
-**B. Build & Run**
-Run the appropriate `script` file to build. Remind to change the appropriate image name in `run.sh`, flags used in run script are important. Remember to source `ros` & `catkin_ws` if `entryfile` does not work well 
+---
 
-**C. Launch file & Test**
-In theory I included all the known flags to me in the .launch file. I tested the build using publicly availiable `rosbags`. It is obvious that `odometry` & `slam` nodes are running on GPU but the GPU activity only went up by 3-5%. Remember to supress the output of the terminals because that also register as gpu utilization and stop any other gpu related task e.g videos, to observe the actual utilization of the gpu. 
+## Build Sets Context
 
-The commented lines are either extra information, packages that I thought they were needed and/or I didn't manage to setup them properly or how I thought I had to
+There are two build attempts described. "Set 1" is more complete than the second, with the main difference being in the final step involving the building of `rtabmap-ros` in the ROS Noetic `catkin_ws`.
 
-Hardware tested : 
-Linux Mint <version>
-i7-6700HQ
-GTX 970m 
-16GB RAM
-<ssd specs> 
+### **Build Set 1: rtabmap-auto**
+- **Type:** Semi-automatic build process for `rtabmap-ros`
+- **Notes:** Feels more complete; compiles without errors
+
+### **Build Set 2 (Auxiliary): rtabmap**
+- **Type:** Full manual installation of most required packages for `rtabmap-ros` targeting specific versions
+- **Notes:** First successful build, but later found not strictly necessary to manually install all. Some packages, such as `aruco-detect`, were excluded due to incompatibilities with other libraries.
+
+---
+
+## Build & Run
+
+- Execute the appropriate `script` file to build.
+- **Important:** Change the image name in `run.sh` as needed. The flags used in the run script are important and are based on the official `rtabmap-ros` docker-image.
+- Remember to source both `ros` and `catkin_ws` if the `entryfile` does not work properly.
+
+---
+
+## Launch File & Testing
+
+- The provided `.launch` file includes all flags known to me to use `Gpu`.
+- Testing was performed using publicly available `rosbags`.
+- Both `odometry` and `slam` nodes were observed running on the GPU. However, GPU activity increased by only 3–5%.
+- **Tip:** Suppress terminal output, as it can register as GPU utilization. Stop any other GPU-related tasks (e.g., video playback) to accurately observe actual GPU usage. [menioned in the end of docker file]
+- Commented lines in scripts may include extra information, packages I thought were needed, or configurations I couldn’t set up properly.
+
+---
+
+## Hardware Tested
+
+- **OS:** Linux Mint 22.1
+- **CPU:** Intel i7-6700HQ
+- **GPU:** GTX 970m
+- **RAM:** 16GB 
+- **Storage:** Samsung SSD 970 EVO 250GB ( 80GB Ext4 Partition, 16GB Swap ) 
