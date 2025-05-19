@@ -43,7 +43,7 @@ There are two build attempts described. "Set 1" is more complete than the second
 ## Launch File & Testing
 
 - The provided `.launch` file includes all flags known to me to use `Gpu`.
-- Testing was performed using publicly available `rosbags`.
+- Testing was performed using publicly available `rosbags`. https://docs.google.com/uc?export=download&confirm=5Ptp&id=0B46akLGdg-uaVEs2SGFzT3ZVSU0
 - Both `odometry` and `slam` nodes were observed running on the GPU. However, GPU activity increased by only 3–5%.
 - **Tip:** Suppress terminal output, as it can register as GPU utilization. Stop any other GPU-related tasks (e.g., video playback) to accurately observe actual GPU usage. [menioned in the end of docker file]
 - Commented lines in scripts may include extra information, packages I thought were needed, or configurations I couldn’t set up properly.
